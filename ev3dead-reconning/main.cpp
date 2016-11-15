@@ -23,7 +23,7 @@
   *
   * Preconditions (for EV3/ev3dev):
   * -two tacho motors connected to ports A, D
-  * -MicroInfinity CruizCore XG1300L gyroscope connected to port 3 with manually loaded I2C driver
+  * -MicroInfinity CruizCore XG1300L gyroscope connected to port 1 with manually loaded I2C driver
   * . 
   * See Usage() function for syntax details (or run the program without arguments)
   */
