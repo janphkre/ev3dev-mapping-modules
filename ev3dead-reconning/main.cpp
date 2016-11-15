@@ -29,7 +29,7 @@
   */
 
 // GYRO CONSTANTS
-const char *GYRO_PORT="i2c-legoev35:i2c1";
+const char *GYRO_PORT="i2c-legoev33:i2c1";
 const int GYRO_PATH_MAX=100;
 char GYRO_PATH[GYRO_PATH_MAX]="/sys/class/lego-sensor/sensor";
 
