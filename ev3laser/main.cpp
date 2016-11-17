@@ -48,12 +48,12 @@ struct laser_packet
 	uint64_t timestamp_us;
 	uint16_t laser_speed; //fixed point, 6 bits precision, divide by 64.0 to get floating point 
 	uint16_t laser_angle; //angle of laser_readings[0]
-	laser_reading laser_readings[4*LASER_FRAMES_PER_READ];
+	xv11lidar_reading laser_readings[4*LASER_FRAMES_PER_READ];
 };
 
 const int LASER_PACKET_BYTES = 12 + 16 * LASER_FRAMES_PER_READ;
 
-void MainLoop(int socket_udp, const struct sockaddr_in &address, struct xv11lidar_data *laser, ev3dev::dc_motor *laser_motor);
+void MainLoop(int socket_udp, const struct sockaddr_in &address, struct xv11lidar *laser, ev3dev::dc_motor *laser_motor);
 
 int ProcessInput(int argc, char **argv, int *port, int *duty_cycle, int *crc_tolerance_pct);
 void Usage();
@@ -62,8 +62,8 @@ void Finish(int signal);
 
 void InitLaserMotor(ev3dev::dc_motor *m, int duty_cycle);
 
-int EncodeLaserReading(const laser_reading *reading, char *data);
-int EncodeLaserFrame(const laser_frame *frame, char *data);
+int EncodeLaserReading(const xv11lidar_reading *reading, char *data);
+int EncodeLaserFrame(const xv11lidar_frame *frame, char *data);
 int EncodeLaserPacket(const laser_packet &p, char *data);
 
 void SendLaserPacket(int socket_udp, const sockaddr_in &dst, const laser_packet &packet);
@@ -72,9 +72,8 @@ int main(int argc, char **argv)
 {
 	int socket_udp;
 	struct sockaddr_in address_udp;
-	struct xv11lidar_data laser;    
-	int port;
-	int duty_cycle, crc_tolerance_pct;
+	struct xv11lidar *laser;    
+	int port, duty_cycle, crc_tolerance_pct;
 	
 	if( ProcessInput(argc, argv, &port, &duty_cycle, &crc_tolerance_pct) )
 	{
@@ -95,15 +94,15 @@ int main(int argc, char **argv)
 	//let the motor spin for a while
 	Sleep(2000); 
 	 
- 	if( InitLaser(&laser, laser_tty, LASER_FRAMES_PER_READ, crc_tolerance_pct) !=SUCCESS )
+ 	if( (laser=xv11lidar_init(laser_tty, LASER_FRAMES_PER_READ, crc_tolerance_pct)) == NULL )
 	{
 		fprintf(stderr, "ev3laser: init laser failed\n");
 		g_finish_program=true;
 	}
 
-	MainLoop(socket_udp, address_udp, &laser, &motor);
+	MainLoop(socket_udp, address_udp, laser, &motor);
 
-	CloseLaser(&laser);
+	xv11lidar_close(laser);
 	motor.stop();
 	CloseNetworkUDP(socket_udp);
 
@@ -112,14 +111,14 @@ int main(int argc, char **argv)
 	return 0;	
 }
 
-void MainLoop(int socket_udp, const struct sockaddr_in &address, struct xv11lidar_data *laser, ev3dev::dc_motor *laser_motor)
+void MainLoop(int socket_udp, const struct sockaddr_in &address, struct xv11lidar *laser, ev3dev::dc_motor *laser_motor)
 {
 	struct laser_packet packet;
-	struct laser_frame frames[LASER_FRAMES_PER_READ];
+	struct xv11lidar_frame frames[LASER_FRAMES_PER_READ];
 	uint64_t last_timestamp;
-	uint32_t rpm;
+	uint32_t rpm, sane_frames;
 	int status, counter, benchs=INT_MAX;
-
+	
 	uint64_t start=TimestampUs();	
 	last_timestamp=start;
 		
@@ -127,7 +126,7 @@ void MainLoop(int socket_udp, const struct sockaddr_in &address, struct xv11lida
 	{
 		packet.timestamp_us=last_timestamp;
 		
-		if( (status=ReadLaser(laser, frames)) != SUCCESS )
+		if( (status=xv11lidar_read(laser, frames)) != XV11LIDAR_SUCCESS )
 		{
 			fprintf(stderr, "ev3laser: ReadLaser failed with status %d\n", status);
 			break;
@@ -137,14 +136,20 @@ void MainLoop(int socket_udp, const struct sockaddr_in &address, struct xv11lida
 
 		packet.laser_angle=(frames[0].index-0xA0)*4;
 		
-		rpm=0;
+		rpm=sane_frames=0;
+	
 		for(int i=0;i<LASER_FRAMES_PER_READ;++i)
 		{
-			rpm+=frames[i].speed;
-			memcpy(packet.laser_readings+4*i, frames[i].readings, 4*sizeof(laser_reading));
+			memcpy(packet.laser_readings+4*i, frames[i].readings, 4*sizeof(xv11lidar_reading));
+			if(frames[i].readings[0].invalid_data == 0 || frames[i].readings[0].distance != XV11LIDAR_CRC_FAILURE)
+			{
+				++sane_frames;
+				rpm+=frames[i].speed;
+			}
+
 		}
 		
-		packet.laser_speed=rpm/LASER_FRAMES_PER_READ;
+		packet.laser_speed=rpm/sane_frames;
 		
 		SendLaserPacket(socket_udp, address, packet);
 		
@@ -216,7 +221,7 @@ void InitLaserMotor(ev3dev::dc_motor *m, int duty_cycle)
 }
 
  
-int EncodeLaserReading(const laser_reading *reading, char *data)
+int EncodeLaserReading(const xv11lidar_reading *reading, char *data)
 {
 	const uint16_t *reading_as_u16=(uint16_t*)reading;
 	
@@ -228,7 +233,7 @@ int EncodeLaserReading(const laser_reading *reading, char *data)
 	return 4;
 }
 
-int EncodeLaserFrame(const laser_frame *frame, char *data)
+int EncodeLaserFrame(const xv11lidar_frame *frame, char *data)
 {
 	*data=frame->start;
 	++data;
@@ -268,7 +273,6 @@ int EncodeLaserPacket(const laser_packet &p, char *data)
 void SendLaserPacket(int socket_udp, const sockaddr_in &dst, const laser_packet &packet)
 {
 	static char buffer[LASER_PACKET_BYTES];
-	//memcpy(buffer, &packet, sizeof(laser_packet));
 	EncodeLaserPacket(packet, buffer);
 	SendToUDP(socket_udp, dst, buffer, LASER_PACKET_BYTES);
 }
