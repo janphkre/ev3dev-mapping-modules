@@ -43,7 +43,7 @@ volatile sig_atomic_t g_finish_program=0;
 const int TTY_PATH_MAX=100;
 const int LASER_FRAMES_PER_READ=10;
 const int LASER_FRAMES_PER_ROTATION=90;
-const uint64_t MICROSECONDS_PER_MINUTE=60000000;
+const uint64_t MICROSECONDS_PER_MINUTE=60 * 1000000;
 const uint64_t LASER_SPEED_FIXED_POINT_PRECISION=64;
 
 struct laser_packet
@@ -151,26 +151,21 @@ void MainLoop(int socket_udp, const struct sockaddr_in &address, struct xv11lida
 		
 		packet.laser_speed=rpm/sane_frames;
 	
-		timespan_computed = MICROSECONDS_PER_MINUTE * LASER_FRAMES_PER_READ * LASER_SPEED_FIXED_POINT_PRECISION / (LASER_FRAMES_PER_ROTATION * packet.laser_speed);
+		timespan_computed = MICROSECONDS_PER_MINUTE * LASER_FRAMES_PER_READ * LASER_SPEED_FIXED_POINT_PRECISION / ( (uint64_t)packet.laser_speed * LASER_FRAMES_PER_ROTATION);
 		// for 300 rpm this gives ~ 22 222.22222222222222222222222222 us
 		
-		if(counter<100)
-			timestamp_reference=timestamp_measured;
+		if(timestamp_measured < timestamp_reference + timespan_computed)
+		{ // new timestamp has better value, use it from now on
+			timestamp_reference = timestamp_measured;
+			packet.timestamp_us = timestamp_measured - timespan_computed;
+		}
 		else
-		{
-			if(timestamp_measured - timespan_computed < timestamp_reference)
-			{ // new timestamp has better value, use it from now on
-				timestamp_reference = timestamp_measured;
-				packet.timestamp_us = timestamp_measured - timespan_computed;
-			}
-			else
-			{ // reference timetamp is better, correct measured timestamp from reference timestamp
-				timestamp_reference += timespan_computed;
-				correction = timestamp_measured - timestamp_reference;
-				if(correction > max_correction)
-					max_correction= correction;
-				total_correction += correction;
-			}
+		{ // reference timestamp is better, correct measured timestamp from reference timestamp
+			timestamp_reference += timespan_computed;
+			correction = timestamp_measured - timestamp_reference;
+			if(correction > max_correction)
+				max_correction= correction;
+			total_correction += correction;
 		}
 		 
 		SendLaserPacket(socket_udp, address, packet);
