@@ -116,8 +116,8 @@ void MainLoop(int socket_udp, const struct sockaddr_in &address, struct xv11lida
 {
 	struct laser_packet packet;
 	struct xv11lidar_frame frames[LASER_FRAMES_PER_READ];
-	uint64_t timestamp_reference, timestamp_measured, timespan_computed, correction, total_correction=0, max_correction=0;
-	uint32_t rpm, sane_frames;
+	uint64_t timestamp_reference, timestamp_measured, timespan_computed, correction, total_correction=0, max_correction=0, timespan_avg=0;
+	uint32_t rpm, rpm_min=INT_MAX, rpm_max=0, sane_frames;
 	int status, counter, benchs=INT_MAX;
 	
 	uint64_t start=TimestampUs();	
@@ -150,9 +150,14 @@ void MainLoop(int socket_udp, const struct sockaddr_in &address, struct xv11lida
 		}
 		
 		packet.laser_speed=rpm/sane_frames;
+		if(packet.laser_speed>rpm_max)
+			rpm_max=packet.laser_speed;
+		if(packet.laser_speed<rpm_min)
+			rpm_min=packet.laser_speed;
 	
 		timespan_computed = MICROSECONDS_PER_MINUTE * LASER_FRAMES_PER_READ * LASER_SPEED_FIXED_POINT_PRECISION / ( (uint64_t)packet.laser_speed * LASER_FRAMES_PER_ROTATION);
 		// for 300 rpm this gives ~ 22 222.22222222222222222222222222 us
+		timespan_avg+=timespan_computed;
 		
 		if(timestamp_measured < timestamp_reference + timespan_computed)
 		{ // new timestamp has better value, use it from now on
@@ -178,9 +183,9 @@ void MainLoop(int socket_udp, const struct sockaddr_in &address, struct xv11lida
 	double seconds_elapsed=(end-start)/ 1000000.0L;
 	
 	printf("ev3laser: avg loop %f seconds\n", seconds_elapsed/counter);
-	printf("ev3laser: last laser speed %f\n", packet.laser_speed/64.0);
-	printf("ev3laser: max timestamp correction %llu\n", max_correction);
-	printf("ev3laser: avg timestamp correction %llu\n", total_correction/counter);
+	printf("ev3laser: laser rpm last %f min %f max %f\n", packet.laser_speed/64.0, rpm_min/64.0, rpm_max/64.0);
+	printf("ev3laser: timestamp correction avg %f max %f\n", (double)total_correction/counter, (double)max_correction);
+	printf("ev3laser: avg timespan %f\n", (double)timespan_avg/counter);
 }
 
 
