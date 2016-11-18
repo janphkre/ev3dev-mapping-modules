@@ -154,18 +154,23 @@ void MainLoop(int socket_udp, const struct sockaddr_in &address, struct xv11lida
 		timespan_computed = MICROSECONDS_PER_MINUTE * LASER_FRAMES_PER_READ * LASER_SPEED_FIXED_POINT_PRECISION / (LASER_FRAMES_PER_ROTATION * packet.laser_speed);
 		// for 300 rpm this gives ~ 22 222.22222222222222222222222222 us
 		
-		if(timestamp_measured - timespan_computed < timestamp_reference)
-		{ // new timestamp has better value, use it from now on
-			timestamp_reference = timestamp_measured;
-			packet.timestamp_us = timestamp_measured - timespan_computed;
-		}
+		if(counter<100)
+			timestamp_reference=timestamp_measured;
 		else
-		{ // reference timetamp is better, correct measured timestamp from reference timestamp
-			timestamp_reference += timespan_computed;
-			correction = timestamp_measured - timestamp_reference;
-			if(correction > max_correction)
-				max_correction= correction;
-			total_correction += correction;
+		{
+			if(timestamp_measured - timespan_computed < timestamp_reference)
+			{ // new timestamp has better value, use it from now on
+				timestamp_reference = timestamp_measured;
+				packet.timestamp_us = timestamp_measured - timespan_computed;
+			}
+			else
+			{ // reference timetamp is better, correct measured timestamp from reference timestamp
+				timestamp_reference += timespan_computed;
+				correction = timestamp_measured - timestamp_reference;
+				if(correction > max_correction)
+					max_correction= correction;
+				total_correction += correction;
+			}
 		}
 		 
 		SendLaserPacket(socket_udp, address, packet);
