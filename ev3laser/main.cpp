@@ -43,8 +43,15 @@ volatile sig_atomic_t g_finish_program=0;
 const int TTY_PATH_MAX=100;
 const int LASER_FRAMES_PER_READ=10;
 const int LASER_FRAMES_PER_ROTATION=90;
-const uint64_t MICROSECONDS_PER_MINUTE=60 * 1000000;
+
+const uint64_t MICROSECONDS_PER_SECOND=1000000;
+const uint64_t MICROSECONDS_PER_MINUTE=60 * MICROSECONDS_PER_SECOND;
 const uint64_t LASER_SPEED_FIXED_POINT_PRECISION=64;
+
+const uint64_t LASER_BAUDRATE=115200;
+const uint64_t LASER_FRAME_BYTES=sizeof(xv11lidar_frame); //22
+const uint64_t LASER_FRAME_TRANSMISSION_BITS=LASER_FRAME_BYTES * (8 +2 ); //8 bits + start bit + stop bit for every byte
+const uint64_t FRAME_TRANSMISSION_TIME_US=LASER_FRAME_TRANSMISSION_BITS * MICROSECONDS_PER_SECOND / LASER_BAUDRATE + 1;  
 
 struct laser_packet
 {
@@ -171,7 +178,7 @@ void MainLoop(int socket_udp, const struct sockaddr_in &address, struct xv11lida
 			timestamp_reference = timestamp_measured;
 		else
 		{	
-			timespan_computed = MICROSECONDS_PER_MINUTE * LASER_FRAMES_PER_READ * LASER_SPEED_FIXED_POINT_PRECISION * RPM_AVG_FRAMES / ( last_avg * LASER_FRAMES_PER_ROTATION);
+			timespan_computed = MICROSECONDS_PER_MINUTE * LASER_FRAMES_PER_READ * LASER_SPEED_FIXED_POINT_PRECISION * RPM_AVG_FRAMES / ( last_avg * LASER_FRAMES_PER_ROTATION) + FRAME_TRANSMISSION_TIME_US;
 			if(timespan_computed < timespan_min)
 				timespan_min = timespan_computed;
 			if(timespan_computed > timespan_max)
