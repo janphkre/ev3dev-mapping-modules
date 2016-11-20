@@ -144,7 +144,7 @@ void MainLoop(int socket_udp, const struct sockaddr_in &address, struct xv11lida
 			break;
 		}
 		// when read is finished, next read proceeds
-		timestamp_measured=TimestampUs(); 
+		timestamp_measured=TimestampUs() - FRAME_TRANSMISSION_TIME_US; 
 		
 		packet.laser_angle=(frames[0].index-0xA0)*4;
 		
@@ -178,7 +178,7 @@ void MainLoop(int socket_udp, const struct sockaddr_in &address, struct xv11lida
 			timestamp_reference = timestamp_measured;
 		else
 		{	
-			timespan_computed = MICROSECONDS_PER_MINUTE * LASER_FRAMES_PER_READ * LASER_SPEED_FIXED_POINT_PRECISION * RPM_AVG_FRAMES / ( last_avg * LASER_FRAMES_PER_ROTATION) + FRAME_TRANSMISSION_TIME_US;
+			timespan_computed = MICROSECONDS_PER_MINUTE * LASER_FRAMES_PER_READ * LASER_SPEED_FIXED_POINT_PRECISION * RPM_AVG_FRAMES / ( last_avg * LASER_FRAMES_PER_ROTATION);
 			if(timespan_computed < timespan_min)
 				timespan_min = timespan_computed;
 			if(timespan_computed > timespan_max)
