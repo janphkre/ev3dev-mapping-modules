@@ -118,6 +118,10 @@ void MainLoop(int socket_udp, const struct sockaddr_in &address, struct xv11lida
 	struct xv11lidar_frame frames[LASER_FRAMES_PER_READ];
 	uint64_t timestamp_reference, timestamp_measured, timespan_computed, timespan_min=INT64_MAX, timespan_max=0, correction, total_correction=0, max_correction=0, timespan_avg=0;
 	uint32_t rpm, rpm_min=INT_MAX, rpm_max=0, sane_frames;
+	uint64_t rpm_avg=0 , last_avg=0;
+	uint32_t rpm_frames=0;
+	const uint32_t RPM_AVG_FRAMES=450;
+	
 	int status, counter, benchs=INT_MAX;
 	
 	uint64_t start=TimestampUs();	
@@ -146,6 +150,14 @@ void MainLoop(int socket_udp, const struct sockaddr_in &address, struct xv11lida
 			{
 				++sane_frames;
 				rpm+=frames[i].speed;
+				rpm_avg += frames[i].speed;
+				++rpm_frames;
+				
+				if(rpm_frames == RPM_AVG_FRAMES)
+				{
+					last_avg = rpm_avg;
+					rpm_frames = rpm_avg = 0;	
+				}
 			}
 		}
 		
@@ -155,28 +167,32 @@ void MainLoop(int socket_udp, const struct sockaddr_in &address, struct xv11lida
 		if(packet.laser_speed<rpm_min)
 			rpm_min=packet.laser_speed;
 	
-		timespan_computed = MICROSECONDS_PER_MINUTE * LASER_FRAMES_PER_READ * LASER_SPEED_FIXED_POINT_PRECISION / ( (uint64_t)packet.laser_speed * LASER_FRAMES_PER_ROTATION);
-		if(timespan_computed < timespan_min)
-			timespan_min = timespan_computed;
-		if(timespan_computed > timespan_max)
-			timespan_max = timespan_computed;
-		// for 300 rpm this gives ~ 22 222.22222222222222222222222222 us
-		timespan_avg+=timespan_computed;
-		
-		if(timestamp_measured < timestamp_reference + timespan_computed)
-		{ // new timestamp has better value, use it from now on
+		if(last_avg == 0)
 			timestamp_reference = timestamp_measured;
-			packet.timestamp_us = timestamp_measured - timespan_computed;
-		}
 		else
-		{ // reference timestamp is better, correct measured timestamp from reference timestamp
-			timestamp_reference += timespan_computed;
-			correction = timestamp_measured - timestamp_reference;
-			if(correction > max_correction)
-				max_correction= correction;
-			total_correction += correction;
+		{	
+			timespan_computed = MICROSECONDS_PER_MINUTE * LASER_FRAMES_PER_READ * LASER_SPEED_FIXED_POINT_PRECISION * RPM_AVG_FRAMES / ( last_avg * LASER_FRAMES_PER_ROTATION);
+			if(timespan_computed < timespan_min)
+				timespan_min = timespan_computed;
+			if(timespan_computed > timespan_max)
+				timespan_max = timespan_computed;
+			// for 300 rpm this gives ~ 22 222.22222222222222222222222222 us
+			timespan_avg+=timespan_computed;
+			
+			if(timestamp_measured < timestamp_reference + timespan_computed)
+			{ // new timestamp has better value, use it from now on
+				timestamp_reference = timestamp_measured;
+				packet.timestamp_us = timestamp_measured - timespan_computed;
+			}
+			else
+			{ // reference timestamp is better, correct measured timestamp from reference timestamp
+				timestamp_reference += timespan_computed;
+				correction = timestamp_measured - timestamp_reference;
+				if(correction > max_correction)
+					max_correction= correction;
+				total_correction += correction;
+			}
 		}
-		 
 		SendLaserPacket(socket_udp, address, packet);
 		
 		if(IsStandardInputEOF()) //the parent process has closed it's pipe end
