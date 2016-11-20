@@ -208,11 +208,12 @@ void MainLoop(int socket_udp, const struct sockaddr_in &address, struct xv11lida
 	
 	uint64_t end=TimestampUs();
 	double seconds_elapsed=(end-start)/ 1000000.0L;
+	int fps_init_counts=RPM_AVG_FRAMES / LASER_FRAMES_PER_READ;
 	
 	printf("ev3laser: avg loop %f seconds\n", seconds_elapsed/counter);
 	printf("ev3laser: laser rpm last %f min %f max %f\n", packet.laser_speed/64.0, rpm_min/64.0, rpm_max/64.0);
 	printf("ev3laser: timestamp correction avg %f max %f\n", (double)total_correction/counter, (double)max_correction);
-	printf("ev3laser: avg timespan %f min %f max %f\n", (double)timespan_avg/counter, (double)timespan_min, double(timespan_max));
+	printf("ev3laser: avg timespan %f min %f max %f\n", (double)timespan_avg/(counter-fps_init_counts), (double)timespan_min, double(timespan_max));
 }
 
 
