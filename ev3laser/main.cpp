@@ -132,7 +132,7 @@ void MainLoop(int socket_udp, const struct sockaddr_in &address, struct xv11lida
 	int status, counter, benchs=INT_MAX;
 	
 	uint64_t start=TimestampUs();	
-	timestamp_reference=start;
+	timestamp_reference=start - FRAME_TRANSMISSION_TIME_US;
 		
 	for(counter=0;!g_finish_program && counter<benchs;++counter)
 	{
