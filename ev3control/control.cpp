@@ -124,7 +124,7 @@ vector<char*> Control::PrepareExecvArgumentList(const string& module_call, strin
 }
 
 
-void Control::DisableModule(const std::string &name)
+bool Control::DisableModule(const std::string &name)
 {
 	Module module;
 
@@ -133,21 +133,58 @@ void Control::DisableModule(const std::string &name)
 	
 	if(module.state != MODULE_ENABLED)
 		Die("Control: request to disable module but module is not enabled\n");
+	
+	if(module.write_fd!=-1)
+	{
+		close(module.write_fd);
+		module.write_fd=-1;
+		modules[name]=module;
+	}	
+	
+	if(DisableModuleWait(name, &module))
+		return true;
+
+	fprintf(stderr, "Control: DisableModule unable to terminate module %s gently\n", name.c_str());	
+	
+	if(kill(module.pid, SIGINT) == -1)
+		DieErrno("Control: DisableModule kill SIGINT error\n");
+
+	if(DisableModuleWait(name, &module))
+		return true;
+
+	fprintf(stderr, "Control: DisableModule unable to terminate module %s with SIGINT\n", name.c_str());	
+
+	if(kill(module.pid, SIGKILL) == -1)
+		DieErrno("Control: DisableModule kill SIGKILL error\n");
+
+	if(DisableModuleWait(name, &module))
+		return true;
 		
-	close(module.write_fd);
+	fprintf(stderr, "Control: DisableModule unable to terminate module %s with SIGKILL\n", name.c_str());	
 		
+	return false;
+}
+
+bool Control::DisableModuleWait(const std::string &name, Module *module)
+{
 	int status;	
+	pid_t pid;
+
+	for(int i=0;i<MODULE_DISABLE_TRIES;++i)
+	{
+		Sleep(MODULE_DISABLE_MS);
+		if( (pid=waitpid(module->pid, &status, WNOHANG)) == -1)
+			DieErrno("Control: DisableModule waitpid error");
+		if (pid == 0)
+			continue;
+
+		module->pid=0;
+		module->state=MODULE_DISABLED;
+		modules[name]=*module;
 		
-	pid_t pid=waitpid(module.pid, &status, 0);		
-	
-	if(pid == -1)
-		DieErrno("Control: DisableModule waitpid error for module\n");
-		
-	module.state=MODULE_DISABLED;
-	module.write_fd=0;
-	module.pid=0;
-	
-	modules[name]=module;
+		return true;
+	}
+	return false;
 }
 
 std::list<std::string> Control::DisableModules()
@@ -162,8 +199,8 @@ std::list<std::string> Control::DisableModules()
 		if(module.state != MODULE_ENABLED)
 			continue;
 
-		DisableModule(it->first);
-		disabled.push_back(it->first);
+		if(DisableModule(it->first))
+			disabled.push_back(it->first);
 	}	
 	return disabled;
 }
