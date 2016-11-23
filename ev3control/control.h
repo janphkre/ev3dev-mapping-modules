@@ -18,8 +18,8 @@
  * Those constants can be tuned:
  * https://github.com/bmegli/ev3dev-mapping/issues/28 for explanation
 */
-const int MODULE_DISABLE_TRIES=3;
-const int MODULE_DISABLE_MS=50;
+const int MODULE_DISABLE_TRIES=5;
+const int MODULE_DISABLE_MS=100;
 
 #include <sys/types.h> //pid_t
 
