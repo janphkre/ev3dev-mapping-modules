@@ -51,12 +51,11 @@ using namespace ev3dev;
 struct car_reconning_packet {
 
 	uint64_t timestamp_us;
-	int32_t position_steer;
 	int32_t position_drive;
 	int16_t heading;
 };
 
-const int DEAD_RECONNING_PACKET_BYTES=18; //2 + 2*4 + 8
+const int DEAD_RECONNING_PACKET_BYTES=14; //2 + 4 + 8
 
 // GYRO CONSTANTS
 const char *GYRO_PORT = "i2c-legoev35:i2c1";
@@ -119,7 +118,6 @@ void MainLoop(int socket_udp, const sockaddr_in &destination_udp, const medium_m
 	
 	for(i=0;i<BENCHS;++i) {	
 		frame.timestamp_us=TimestampUs();
-		frame.position_steer = steer.position();//TODO:do we need the steering if we have the drive&gyro?
 		frame.position_drive = drive.position();
 		
 		if(ReadGyroAngle(gyro_direct_fd, &heading) == -ENXIO) {
@@ -191,9 +189,6 @@ int ReadGyroAngle(int gyro_direct_fd, int16_t *out_angle) {
 int EncodeCarReconningPacket(const dead_reconning_packet &p, char *data) {
 	*((uint64_t*)data) = htobe64(p.timestamp_us);
 	data += sizeof(p.timestamp_us);
-
-	*((uint32_t*)data)= htobe32(p.position_steer);
-	data += sizeof(p.position_steer);
 
 	*((uint32_t*)data)= htobe32(p.position_drive);
 	data += sizeof(p.position_drive);
