@@ -19,32 +19,22 @@ echo 'Loading MicroInfnity CruizCore XG1300L gyroscope I2C driver'
 echo '(this may require root privileges)'
 echo mi-xg1300l 0x01 > /sys/bus/i2c/devices/i2c-5/new_device
 
-echo 'Changing input 1 mode to other-uart (XV11-LIDAR 1)'
-echo other-uart > /sys/class/lego-port/port0/mode
-echo 'Changing input 2 mode to other-uart (XV11-LIDAR 2)'
+echo 'Changing input 2 mode to other-uart (XV11-LIDAR 1)'
 echo other-uart > /sys/class/lego-port/port1/mode
 
-echo 'Changing output B mode to dc-motor (XV11-LIDAR 2 motor)'
-echo dc-motor > /sys/class/lego-port/port5/mode
 echo 'Changing output C mode to dc-motor (XV11-LIDAR 1 motor)'
 echo dc-motor > /sys/class/lego-port/port6/mode
 
 echo 'Waiting for dc-motor devices to be created'
 sleep 1
 
-echo 'Setting duty cycle setpoint for XV11-LIDAR 2 motor'
-echo 44 > /sys/class/dc-motor/motor0/duty_cycle_sp
 echo 'Setting duty cycle setpoint for XV11-LIDAR 1 motor'
 echo 44 > /sys/class/dc-motor/motor1/duty_cycle_sp
 
-echo 'Warming up the XV11-LIDAR 2 motor (spinning 20 seconds)'
-echo run-direct > /sys/class/dc-motor/motor0/command
 echo 'Warming up the XV11-LIDAR 1 motor (spinning 20 seconds)'
 echo run-direct > /sys/class/dc-motor/motor1/command
 sleep 20
 
-echo 'Stopping XV11-LIDAR 2 motor'
-echo stop > /sys/class/dc-motor/motor0/command
 echo 'Stopping XV11-LIDAR 1 motor'
 echo stop > /sys/class/dc-motor/motor1/command
 

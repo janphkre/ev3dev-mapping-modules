@@ -1,4 +1,4 @@
-DIRS = ev3drive ev3odometry ev3laser ev3control ev3dead-reconning ev3wifi
+DIRS = ev3car-drive ev3car-reconning ev3drive ev3odometry ev3laser ev3control ev3dead-reconning ev3wifi
 OUTPUT_DIR = bin
 
 all: $(DIRS) ev3init TestingTheLIDAR TestingTheDriveWithDeadReconning
@@ -13,7 +13,9 @@ TestingTheLIDAR:
 TestingTheDriveWithDeadReconning:
 	cp scripts/TestingTheDriveWithDeadReconning.sh $(OUTPUT_DIR)/TestingTheDriveWithDeadReconning.sh && chmod +x $(OUTPUT_DIR)/TestingTheDriveWithDeadReconning.sh
 		
-clean: 
+clean:
+	$(MAKE) -C ev3car-drive clean
+	$(MAKE) -C ev3car-reconning clean
 	$(MAKE) -C ev3drive clean
 	$(MAKE) -C ev3odometry clean
 	$(MAKE) -C ev3laser clean
