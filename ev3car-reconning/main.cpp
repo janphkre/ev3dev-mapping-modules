@@ -55,7 +55,7 @@ struct car_reconning_packet {
 	int16_t heading;
 };
 
-const int DEAD_RECONNING_PACKET_BYTES=14; //2 + 4 + 8
+const int CAR_RECONNING_PACKET_BYTES=14; //2 + 4 + 8
 
 // GYRO CONSTANTS
 const char *GYRO_PORT = "i2c-legoev35:i2c1";
@@ -69,7 +69,7 @@ int InitGyro(i2c_sensor *gyro);
 int ReadGyroAngle(int gyro_direct_fd, int16_t *out_angle);
 
 int EncodeCarReconningPacket(const car_reconning_packet &packet, char *buffer);
-void SendCarReconningFrameUDP(int socket, const sockaddr_in &dest, const dead_reconning_packet &frame);
+void SendCarReconningFrameUDP(int socket, const sockaddr_in &dest, const car_reconning_packet &frame);
 
 void Usage();
 int ProcessInput(int argc, char **argv, int *out_port, int *out_poll_ms);
@@ -95,8 +95,7 @@ int main(int argc, char **argv) {
 
 	InitNetworkUDP(&socket_udp, &destination_udp, host, port, 0);
 	
-	InitMotor(&motor_left);
-	InitMotor(&motor_right);
+	InitMotor(&motor_drive);
 		
 	MainLoop(socket_udp, destination_udp, motor_drive, gyro_direct_fd, poll_ms);
 	
@@ -186,7 +185,7 @@ int ReadGyroAngle(int gyro_direct_fd, int16_t *out_angle) {
 	return -ENXIO;			
 }
 
-int EncodeCarReconningPacket(const dead_reconning_packet &p, char *data) {
+int EncodeCarReconningPacket(const car_reconning_packet &p, char *data) {
 	*((uint64_t*)data) = htobe64(p.timestamp_us);
 	data += sizeof(p.timestamp_us);
 
@@ -196,7 +195,7 @@ int EncodeCarReconningPacket(const dead_reconning_packet &p, char *data) {
 	*((uint16_t*)data)= htobe16(p.heading);
 	data += sizeof(p.heading);
 	
-	return DEAD_RECONNING_PACKET_BYTES;	
+	return CAR_RECONNING_PACKET_BYTES;	
 }
 void SendCarReconningFrameUDP(int socket, const sockaddr_in &destination, const car_reconning_packet &frame) {
 	static char buffer[CAR_RECONNING_PACKET_BYTES];

@@ -9,8 +9,8 @@ CC = gcc
 CXX = g++
 DEBUG = 
 CFLAGS = -O2 -Wall -DEV3 -c 
-CXX_FLAGS = -O2 -std=c++11 -Wall -DEV3 -D_GLIBCXX_USE_NANOSLEEP -c $(DEBUG) -I $(INCLUDE) -pthread
-LFLAGS = -Wall $(DEBUG)
+CXX_FLAGS = -O2 -std=c++11 -Wall -DEV3 -D_GLIBCXX_USE_NANOSLEEP -c $(DEBUG) -I $(INCLUDE) 
+LFLAGS = -Wall -pthread $(DEBUG)
 
 $(TARGET) : $(OBJS)
 	$(CXX) $(LFLAGS) $(OBJS) -o $(TARGET)
