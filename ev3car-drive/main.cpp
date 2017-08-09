@@ -72,7 +72,7 @@ large_motor drive(OUTPUT_A);
 int turnPosition;
 
 void MainLoop(int socket_udp);
-void ProcessMessage(const drive_packet &packet);
+void ProcessMessage(const car_drive_packet &packet);
 
 void* CompleteTurn(void* v);
 void* CompleteTurnStop(void* v);
@@ -102,13 +102,21 @@ int main(int argc, char **argv) {
 	InitMotor(&steer);
 	steer.set_duty_cycle_sp(INIT_STEERING_POWER);
 	steer.run_direct();
-	while (!steer.state().Contains(STALLED)) SleepUs(TURN_SLEEP);
+	do {
+		SleepUs(TURN_SLEEP);
+		mode_set state = steer.state();
+	}
+	while(state.find(STALLED) == state.end());
 	steer.set_duty_cycle_sp(-INIT_STEERING_POWER);
-	while (!steer.state().Contains(STALLED)) SleepUs(TURN_SLEEP);
+	do {
+		SleepUs(TURN_SLEEP);
+		mode_set state = steer.state();
+	} while (state.find(STALLED) == state.end());
 	steerRight = steer.position_sp();
 	steer.stop();
 	steerForward = ((steerLeft + steerRight) / 2) + steerLeft;
-	steer.run_to_abs_pos(steerForward);
+	steer.set_position_sp(steerForward);
+	steer.run_to_abs_pos();
 
 	//init drive
 	InitMotor(&drive);
