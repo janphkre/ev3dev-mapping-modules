@@ -62,7 +62,7 @@ const char *GYRO_PORT = "i2c-legoev35:i2c1";
 const int GYRO_PATH_MAX = 100;
 char GYRO_PATH[GYRO_PATH_MAX] = "/sys/class/lego-sensor/sensor";
 
-void MainLoop(int socket_udp, const sockaddr_in &destination_udp, const medium_motor &steer, const large_motor &drive, int gyro_direct_fd, int poll_ms);
+void MainLoop(int socket_udp, const sockaddr_in &destination_udp, const large_motor &drive, int gyro_direct_fd, int poll_ms);
 
 void InitMotor(motor *m);
 int InitGyro(i2c_sensor *gyro);
@@ -85,7 +85,7 @@ int main(int argc, char **argv) {
 	}
 	const char *host=argv[1];
 	
-	medium_motor motor_steer(OUTPUT_B);
+	//medium_motor motor_steer(OUTPUT_B);
 	large_motor motor_drive(OUTPUT_A);
 	i2c_sensor gyro(GYRO_PORT, {"mi-xg1300l"});
 
@@ -98,7 +98,7 @@ int main(int argc, char **argv) {
 	InitMotor(&motor_left);
 	InitMotor(&motor_right);
 		
-	MainLoop(socket_udp, destination_udp, motor_steer, motor_drive, gyro_direct_fd, poll_ms);
+	MainLoop(socket_udp, destination_udp, motor_drive, gyro_direct_fd, poll_ms);
 	
 	close(gyro_direct_fd);
 	CloseNetworkUDP(socket_udp);
@@ -108,7 +108,7 @@ int main(int argc, char **argv) {
 	return 0;
 }
 
-void MainLoop(int socket_udp, const sockaddr_in &destination_udp, const medium_motor &steer, const large_motor &drive, int gyro_direct_fd, int poll_ms) {
+void MainLoop(int socket_udp, const sockaddr_in &destination_udp, const large_motor &drive, int gyro_direct_fd, int poll_ms) {
 	const int BENCHS=INT_MAX;
 		
 	struct car_reconning_packet frame;

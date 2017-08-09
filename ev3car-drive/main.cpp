@@ -100,19 +100,19 @@ int main(int argc, char **argv) {
 
 	//init steering
 	InitMotor(&steer);
-	steer->set_duty_cycle_sp(INIT_STEERING_POWER);
-	steer->run_direct();
-	while (!steer->state().Contains(STALLED)) SleepUs(TURN_SLEEP);
-	steer->set_duty_cycle_sp(-INIT_STEERING_POWER);
-	while (!steer->state().Contains(STALLED)) SleepUs(TURN_SLEEP);
-	steerRight = steer->position_sp();
-	steer->stop();
+	steer.set_duty_cycle_sp(INIT_STEERING_POWER);
+	steer.run_direct();
+	while (!steer.state().Contains(STALLED)) SleepUs(TURN_SLEEP);
+	steer.set_duty_cycle_sp(-INIT_STEERING_POWER);
+	while (!steer.state().Contains(STALLED)) SleepUs(TURN_SLEEP);
+	steerRight = steer.position_sp();
+	steer.stop();
 	steerForward = ((steerLeft + steerRight) / 2) + steerLeft;
-	steer->run_to_abs_pos(steerForward);
+	steer.run_to_abs_pos(steerForward);
 
 	//init drive
 	InitMotor(&drive);
-	drive->set_ramp_up_sp(RAMP_UP_MS);
+	drive.set_ramp_up_sp(RAMP_UP_MS);
 
 	InitNetworkUDP(&socket_udp, &destination_udp, NULL, port, timeout_ms);
 
@@ -151,15 +151,15 @@ void ProcessMessage(const car_drive_packet &packet) {
 	g_end_turn_stop = 0;
 	if (packet.command == TURN) {
 		//TURN
-		if (packet.param2 == 0) steer->set_position_sp(steerForward);
-		else if(packet.param2 > 0) steer->set_position_sp(steerLeft);
-		else steer->set_position_sp(steerRight);
-		steer->run_to_abs_pos();
+		if (packet.param2 == 0) steer.set_position_sp(steerForward);
+		else if(packet.param2 > 0) steer.set_position_sp(steerLeft);
+		else steer.set_position_sp(steerRight);
+		steer.run_to_abs_pos();
 		//FORWARD / BACKWARD
-		if(packet.param1 > 0) drive->set_duty_cycle_sp(100);
-		else drive->set_duty_cycle_sp(-100);
-		drive->run_direct();
-		turnPosition = drive->position() + packet.param2;
+		if(packet.param1 > 0) drive.set_duty_cycle_sp(100);
+		else drive.set_duty_cycle_sp(-100);
+		drive.run_direct();
+		turnPosition = drive.position() + packet.param2;
 		if (packet.param2 != 0) {
 			g_end_turn = 1;
 			pthread_t completeThread;
@@ -170,18 +170,18 @@ void ProcessMessage(const car_drive_packet &packet) {
 		}
 
 	} else if (packet.command == FORWARD) {
-		drive->set_duty_cycle_sp(100);
-		drive->run_direct();
+		drive.set_duty_cycle_sp(100);
+		drive.run_direct();
 	} else if (packet.command == BACKWARD) {
-		drive->set_duty_cycle_sp(-100);
-		drive->run_direct();
+		drive.set_duty_cycle_sp(-100);
+		drive.run_direct();
 	} else if (packet.command == STOP) {
 		StopMotors();
 	} else { //packet.command == TURNSTOP
-		if (packet.param1 > 0) drive->set_duty_cycle_sp(100);
-		else drive->set_duty_cycle_sp(-100);
-		drive->run_direct();
-		turnPosition = drive->position() + packet.param2;
+		if (packet.param1 > 0) drive.set_duty_cycle_sp(100);
+		else drive.set_duty_cycle_sp(-100);
+		drive.run_direct();
+		turnPosition = drive.position() + packet.param2;
 		g_end_turn_stop = 1;
 		pthread_t completeThread;
 		int rc = pthread_create(&completeThread, NULL, CompleteTurnStop, NULL);
@@ -192,16 +192,16 @@ void ProcessMessage(const car_drive_packet &packet) {
 }
 
 void* CompleteTurn(void* v) {
-	while (drive->position() < turnPosition) SleepUs(TURN_SLEEP);
+	while (drive.position() < turnPosition) SleepUs(TURN_SLEEP);
 	if (g_end_turn) {
-		steer->set_position_sp(steerForward);
-		steer->run_to_abs_pos();
+		steer.set_position_sp(steerForward);
+		steer.run_to_abs_pos();
 	}
 	return NULL;
 }
 
 void* CompleteTurnStop(void* v) {
-	while (drive->position() < turnPosition) SleepUs(TURN_SLEEP);
+	while (drive.position() < turnPosition) SleepUs(TURN_SLEEP);
 	if (g_end_turn_stop) {
 		StopMotors();
 		//TODO:SEND RESPONSE! (TURNSTOP)
@@ -216,8 +216,8 @@ void InitMotor(motor *m) {
 }
 
 void StopMotors() {
-	steer->stop();
-	drive->stop();
+	steer.stop();
+	drive.stop();
 }
 
 
