@@ -59,6 +59,7 @@ struct car_drive_packet {
 const int CONTROL_PACKET_BYTES = 14; //8 + 3*2 = 14 bytes
 enum Commands { KEEPALIVE = 0, TURN = 1, FORWARD = 2, BACKWARD = 3, STOP = 4, TURNSTOP = 5 };
 
+const int TURN_SLEEP = 2000;
 const int RAMP_UP_MS = 500;
 const int INIT_STEERING_POWER = 20;
 const mode_type STALLED = "stalled";
@@ -66,15 +67,15 @@ const mode_type STALLED = "stalled";
 int steerLeft;
 int steerForward;
 int steerRight;
-medium_motor *steer;
-large_motor *drive;
+medium_motor *steer(OUTPUT_B);
+large_motor *drive(OUTPUT_A);
 int turnPosition;
 
 void MainLoop(int socket_udp);
 void ProcessMessage(const drive_packet &packet);
 
-void CompleteTurn();
-void CompleteTurnStop();
+void CompleteTurn(void* v);
+void CompleteTurnStop(void* v);
 
 void InitMotor(motor *m);
 void StopMotors();
@@ -90,8 +91,6 @@ void Finish(int signal);
 int main(int argc, char **argv) {			
 	int socket_udp, port, timeout_ms;
 	sockaddr_in destination_udp;
-	motor_steer(OUTPUT_B);
-	motor_drive(OUTPUT_A);
 	
 	ProcessArguments(argc, argv, &port, &timeout_ms);
 	SetStandardInputNonBlocking();
@@ -122,7 +121,7 @@ int main(int argc, char **argv) {
 	MainLoop(socket_udp, &motor_steer, &motor_drive);
 	
 	//cleanup
-	StopMotors(&motor_steer, &motor_drive);
+	StopMotors();
 	CloseNetworkUDP(socket_udp);
 		
 	printf("ev3car-drive: bye\n");
@@ -132,14 +131,14 @@ int main(int argc, char **argv) {
 
 void MainLoop(int socket_udp) {
 	int status;
-	drive_packet packet;
+	car_drive_packet packet;
 	
 	while(!g_finish_program) {
-		status=RecvDrivePacket(socket_udp, &packet);
+		status=RecvCarDrivePacket(socket_udp, &packet);
 		if(status < 0) break;
 		if(status == 0) {
 			//timeout
-			StopMotors(steer, drive);
+			StopMotors();
 			fprintf(stderr, "ev3car-drive: waiting for drive controller...\n");
 		}
 		else ProcessMessage(packet, steer, drive);
@@ -147,7 +146,7 @@ void MainLoop(int socket_udp) {
 	}
 }
 
-void ProcessMessage(const drive_packet &packet) {	
+void ProcessMessage(const car_drive_packet &packet) {	
 	if (packet.command == KEEPALIVE) return;
 	g_end_turn = 0;
 	g_end_turn_stop = 0;
@@ -178,7 +177,7 @@ void ProcessMessage(const drive_packet &packet) {
 		drive->set_duty_cycle_sp(-100);
 		drive->run_direct();
 	} else if (packet.command == STOP) {
-		StopMotors(steer, drive);
+		StopMotors();
 	} else { //packet.command == TURNSTOP
 		if (packet.param1 > 0) drive->set_duty_cycle_sp(100);
 		else drive->set_duty_cycle_sp(-100);
@@ -193,16 +192,16 @@ void ProcessMessage(const drive_packet &packet) {
 	}
 }
 
-void CompleteTurn() {
-	while (drive->position() < turnPosition) Thread.Yield();//TODO
+void CompleteTurn(void* v) {
+	while (drive->position() < turnPosition) SleepUs(TURN_SLEEP);
 	if (g_end_turn) {
 		steer->set_position_sp(steerForward);
 		steer->run_to_abs_pos();
 	}
 }
 
-void CompleteTurnStop() {
-	while (drive->position() < turnPosition) Thread.Yield();//TODO
+void CompleteTurnStop(void* v) {
+	while (drive->position() < turnPosition) SleepUs(TURN_SLEEP);
 	if (g_end_turn_stop) {
 		StopMotors();
 		//TODO:SEND RESPONSE! (TURNSTOP)
@@ -243,7 +242,7 @@ int RecvCarDrivePacket(int socket_udp, car_drive_packet *packet) {
 void DecodeCarDrivePacket(car_drive_packet *packet, const char *data) {
 	packet->timestamp_us=be64toh(*((uint64_t*)data));
 	packet->command=be16toh(*((int16_t*)(data+8)));
-	packet->param1=be8toh(*((int16_t*)(data+10)));
+	packet->param1=be16toh(*((int16_t*)(data+10)));
 	packet->param2=be32toh(*((int32_t*)(data+12)));	
 }
 
