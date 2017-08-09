@@ -67,15 +67,15 @@ const mode_type STALLED = "stalled";
 int steerLeft;
 int steerForward;
 int steerRight;
-medium_motor *steer(OUTPUT_B);
-large_motor *drive(OUTPUT_A);
+medium_motor steer(OUTPUT_B);
+large_motor drive(OUTPUT_A);
 int turnPosition;
 
 void MainLoop(int socket_udp);
 void ProcessMessage(const drive_packet &packet);
 
-void CompleteTurn(void* v);
-void CompleteTurnStop(void* v);
+void* CompleteTurn(void* v);
+void* CompleteTurnStop(void* v);
 
 void InitMotor(motor *m);
 void StopMotors();
@@ -99,26 +99,25 @@ int main(int argc, char **argv) {
 	RegisterSignals(Finish);
 
 	//init steering
-	InitMotor(&motor_steer);
-	motor_steer->set_duty_cycle_sp(INIT_STEERING_POWER);
-	motor_steer->run_direct();
-	while (!motor_steer->state().Contains(STALLED)) Thread.Yield();//TODO:sleep or something.
-	steerLeft = motor_steer->position_sp();
-	motor_steer->set_duty_cycle_sp(-INIT_STEERING_POWER);
-	while (!motor_steer->state().Contains(STALLED)) Thread.Yield();//TODO:sleep or something.
-	steerRight = motor_steer->position_sp();
-	motor_steer->stop();
+	InitMotor(&steer);
+	steer->set_duty_cycle_sp(INIT_STEERING_POWER);
+	steer->run_direct();
+	while (!steer->state().Contains(STALLED)) SleepUs(TURN_SLEEP);
+	steer->set_duty_cycle_sp(-INIT_STEERING_POWER);
+	while (!steer->state().Contains(STALLED)) SleepUs(TURN_SLEEP);
+	steerRight = steer->position_sp();
+	steer->stop();
 	steerForward = ((steerLeft + steerRight) / 2) + steerLeft;
-	motor_steer->run_to_abs_pos(steerForward);
+	steer->run_to_abs_pos(steerForward);
 
 	//init drive
-	InitMotor(&motor_drive);
-	motor_drive->set_ramp_up_sp(RAMP_UP_MS);
+	InitMotor(&drive);
+	drive->set_ramp_up_sp(RAMP_UP_MS);
 
 	InitNetworkUDP(&socket_udp, &destination_udp, NULL, port, timeout_ms);
 
 	//work
-	MainLoop(socket_udp, &motor_steer, &motor_drive);
+	MainLoop(socket_udp);
 	
 	//cleanup
 	StopMotors();
@@ -141,7 +140,7 @@ void MainLoop(int socket_udp) {
 			StopMotors();
 			fprintf(stderr, "ev3car-drive: waiting for drive controller...\n");
 		}
-		else ProcessMessage(packet, steer, drive);
+		else ProcessMessage(packet);
 		if(IsStandardInputEOF()) break;
 	}
 }
@@ -192,20 +191,22 @@ void ProcessMessage(const car_drive_packet &packet) {
 	}
 }
 
-void CompleteTurn(void* v) {
+void* CompleteTurn(void* v) {
 	while (drive->position() < turnPosition) SleepUs(TURN_SLEEP);
 	if (g_end_turn) {
 		steer->set_position_sp(steerForward);
 		steer->run_to_abs_pos();
 	}
+	return NULL;
 }
 
-void CompleteTurnStop(void* v) {
+void* CompleteTurnStop(void* v) {
 	while (drive->position() < turnPosition) SleepUs(TURN_SLEEP);
 	if (g_end_turn_stop) {
 		StopMotors();
 		//TODO:SEND RESPONSE! (TURNSTOP)
 	}
+	return NULL;
 }
 
 void InitMotor(motor *m) {
