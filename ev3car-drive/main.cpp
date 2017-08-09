@@ -40,6 +40,7 @@
 #include <signal.h> //sigaction, sig_atomic_t
 #include <endian.h> //htobe16, htobe32, htobe64
 #include <stdio.h> //printf, etc
+#include <pthread.h>
 
 using namespace ev3dev;
 
@@ -124,7 +125,7 @@ int main(int argc, char **argv) {
 	StopMotors(&motor_steer, &motor_drive);
 	CloseNetworkUDP(socket_udp);
 		
-	printf("ev3cardrive: bye\n");
+	printf("ev3car-drive: bye\n");
 		
 	return 0;
 }
@@ -139,7 +140,7 @@ void MainLoop(int socket_udp) {
 		if(status == 0) {
 			//timeout
 			StopMotors(steer, drive);
-			fprintf(stderr, "ev3drive: waiting for drive controller...\n");
+			fprintf(stderr, "ev3car-drive: waiting for drive controller...\n");
 		}
 		else ProcessMessage(packet, steer, drive);
 		if(IsStandardInputEOF()) break;
@@ -163,7 +164,11 @@ void ProcessMessage(const drive_packet &packet) {
 		turnPosition = drive->position() + packet.param2;
 		if (packet.param2 != 0) {
 			g_end_turn = 1;
-			//TODO: start CompleteTurn() als 2.Thread oder fork() mit g_end_turn als shared memory
+			pthread_t completeThread;
+			int rc = pthread_create(&completeThread, NULL, CompleteTurn, NULL);
+			if (rc) {
+				fprintf(stderr, "ev3car-drive: return code from pThread() was %d\n", rc);
+			}
 		}
 
 	} else if (packet.command == FORWARD) {
@@ -180,7 +185,11 @@ void ProcessMessage(const drive_packet &packet) {
 		drive->run_direct();
 		turnPosition = drive->position() + packet.param2;
 		g_end_turn_stop = 1;
-		//TODO: start CompleteTurnStop() als 2.Thread oder fork() mit g_end_turn als shared memory
+		pthread_t completeThread;
+		int rc = pthread_create(&completeThread, NULL, CompleteTurnStop, NULL);
+		if (rc) {
+			fprintf(stderr, "ev3car-drive: return code from pThread() was %d\n", rc);
+		}
 	}
 }
 
@@ -202,7 +211,7 @@ void CompleteTurnStop() {
 
 void InitMotor(motor *m) {
 	if(!m->connected())
-		Die("ev3drive: motor not connected");
+		Die("ev3car-drive: motor not connected");
 	m->set_stop_action(m->stop_action_brake);
 }
 
@@ -219,11 +228,11 @@ int RecvCarDrivePacket(int socket_udp, car_drive_packet *packet) {
 	
 	if((recv_len = recvfrom(socket_udp, buffer, CONTROL_PACKET_BYTES, 0, NULL, NULL)) == -1) {
 		if(errno==EAGAIN || errno==EWOULDBLOCK || errno==EINPROGRESS) return 0; //timeout!
-		perror("ev3drive: error while receiving control packet");
+		perror("ev3car-drive: error while receiving control packet");
 		return -1;
 	}
 	if(recv_len < CONTROL_PACKET_BYTES) {
-		fprintf(stderr, "ev3drive: received incomplete datagram\n");
+		fprintf(stderr, "ev3car-drive: received incomplete datagram\n");
 		return -1; 
 	}
 	DecodeCarDrivePacket(packet, buffer);	
@@ -239,9 +248,9 @@ void DecodeCarDrivePacket(car_drive_packet *packet, const char *data) {
 }
 
 void Usage() {
-	printf("ev3drive udp_port timeout_ms\n\n");
+	printf("ev3car-drive udp_port timeout_ms\n\n");
 	printf("examples:\n");
-	printf("./ev3drive 8003 500\n");
+	printf("./ev3car-drive 8003 500\n");
 }
 
 void ProcessArguments(int argc, char **argv, int *port, int *timeout_ms) {
@@ -257,7 +266,7 @@ void ProcessArguments(int argc, char **argv, int *port, int *timeout_ms) {
 	
 	if(temp <= 0 || temp > 65535)
 	{
-		fprintf(stderr, "ev3drive: the argument port has to be in range <1, 65535>\n");
+		fprintf(stderr, "ev3car-drive: the argument port has to be in range <1, 65535>\n");
 		exit(EXIT_SUCCESS);
 	}
 
@@ -265,7 +274,7 @@ void ProcessArguments(int argc, char **argv, int *port, int *timeout_ms) {
 	temp=strtol(argv[2], NULL, 0);
 	if(temp <= 0 || temp > 10000)
 	{
-		fprintf(stderr, "ev3drive: the argument timeout_ms has to be in range <1, 10000>\n");
+		fprintf(stderr, "ev3car-drive: the argument timeout_ms has to be in range <1, 10000>\n");
 		exit(EXIT_SUCCESS);
 	}
 	
