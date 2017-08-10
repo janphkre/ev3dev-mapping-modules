@@ -102,17 +102,10 @@ int main(int argc, char **argv) {
 	InitMotor(&steer);
 	steer.set_duty_cycle_sp(INIT_STEERING_POWER);
 	steer.run_direct();
-	mode_set state;
-	do {
-		SleepUs(TURN_SLEEP);
-		state = steer.state();
-	}
-	while(state.find(STALLED) == state.end());
+	SleepUs(TURN_SLEEP*1000);
+	steerLeft = steer.position_sp();
 	steer.set_duty_cycle_sp(-INIT_STEERING_POWER);
-	do {
-		SleepUs(TURN_SLEEP);
-		state = steer.state();
-	} while (state.find(STALLED) == state.end());
+	SleepUs(TURN_SLEEP*1000);
 	steerRight = steer.position_sp();
 	steer.stop();
 	steerForward = ((steerLeft + steerRight) / 2) + steerLeft;

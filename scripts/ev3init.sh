@@ -22,21 +22,21 @@ echo mi-xg1300l 0x01 > /sys/bus/i2c/devices/i2c-5/new_device
 echo 'Changing input 2 mode to other-uart (XV11-LIDAR 1)'
 echo other-uart > /sys/class/lego-port/port1/mode
 
-echo 'Changing output C mode to dc-motor (XV11-LIDAR 1 motor)'
-echo dc-motor > /sys/class/lego-port/port6/mode
+#echo 'Changing output C mode to dc-motor (XV11-LIDAR 1 motor)'
+#echo dc-motor > /sys/class/lego-port/port6/mode
 
-echo 'Waiting for dc-motor devices to be created'
-sleep 1
+#echo 'Waiting for dc-motor devices to be created'
+#sleep 1
 
 echo 'Setting duty cycle setpoint for XV11-LIDAR 1 motor'
-echo 44 > /sys/class/dc-motor/motor1/duty_cycle_sp
+echo 44 > /sys/class/dc-motor/motor0/duty_cycle_sp
 
 echo 'Warming up the XV11-LIDAR 1 motor (spinning 20 seconds)'
-echo run-direct > /sys/class/dc-motor/motor1/command
+echo run-direct > /sys/class/dc-motor/motor0/command
 sleep 20
 
 echo 'Stopping XV11-LIDAR 1 motor'
-echo stop > /sys/class/dc-motor/motor1/command
+echo stop > /sys/class/dc-motor/motor0/command
 
 echo 'Done'
 echo ''
