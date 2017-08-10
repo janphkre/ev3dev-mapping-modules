@@ -61,7 +61,7 @@ enum Commands { KEEPALIVE = 0, TURN = 1, FORWARD = 2, BACKWARD = 3, STOP = 4, TU
 
 const int TURN_SLEEP = 2000;
 const int RAMP_UP_MS = 500;
-const int INIT_STEERING_POWER = 20;
+const int INIT_STEERING_POWER = 80;
 const mode_type STALLED = "stalled";
 
 int steerLeft;
