@@ -61,8 +61,7 @@ enum Commands { KEEPALIVE = 0, TURN = 1, FORWARD = 2, BACKWARD = 3, STOP = 4, TU
 
 const int TURN_SLEEP = 2000;
 const int RAMP_UP_MS = 500;
-const int INIT_STEERING_POWER = 80;
-const mode_type STALLED = "stalled";
+const int INIT_STEERING_POWER = 100;
 
 int steerLeft;
 int steerForward;
@@ -99,20 +98,26 @@ int main(int argc, char **argv) {
 	RegisterSignals(Finish);
 
 	//init steering
-	InitMotor(&steer);
+	steer.reset();
+	InitMotor(&steer);	
+	steer.set_duty_cycle_sp(-INIT_STEERING_POWER);
+	steer.run_direct();
+	Sleep(TURN_SLEEP * 2);
+	steer.stop();
+	steerRight = steer.position();
 	steer.set_duty_cycle_sp(INIT_STEERING_POWER);
 	steer.run_direct();
-	SleepUs(TURN_SLEEP*1000);
-	steerLeft = steer.position_sp();
-	steer.set_duty_cycle_sp(-INIT_STEERING_POWER);
-	SleepUs(TURN_SLEEP*1000);
-	steerRight = steer.position_sp();
+	Sleep(TURN_SLEEP*2);
 	steer.stop();
-	steerForward = ((steerLeft + steerRight) / 2) + steerLeft;
+	steerLeft = steer.position();
+	steerForward = (steerLeft + steerRight) / 2;
+	steer.set_speed_sp(steer.max_speed());
 	steer.set_position_sp(steerForward);
 	steer.run_to_abs_pos();
-
+	Sleep(TURN_SLEEP);
+	printf("ev3car-drive: left %d, right %d, forward %d, duty_cycle %d, pos %d\n", steerLeft, steerRight, steerForward, steer.duty_cycle(), steer.position());
 	//init drive
+	drive.reset();
 	InitMotor(&drive);
 	drive.set_ramp_up_sp(RAMP_UP_MS);
 
