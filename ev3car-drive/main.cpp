@@ -177,9 +177,11 @@ void ProcessMessage(const car_drive_packet &packet) {
 		}
 
 	} else if (packet.command == FORWARD) {
+		steer.set_position_sp(steerForward);
 		drive.set_duty_cycle_sp(100);
 		drive.run_direct();
 	} else if (packet.command == BACKWARD) {
+		steer.set_position_sp(steerForward);
 		drive.set_duty_cycle_sp(-100);
 		drive.run_direct();
 	} else if (packet.command == STOP) {
