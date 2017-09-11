@@ -40,14 +40,13 @@
 #include <signal.h> //sigaction, sig_atomic_t
 #include <endian.h> //htobe16, htobe32, htobe64
 #include <stdio.h> //printf, etc
-#include <pthread.h>
 
 using namespace ev3dev;
 
 // GLOBAL VARIABLES
 volatile sig_atomic_t g_finish_program = 0;
-volatile sig_atomic_t g_end_turn = 0;
-volatile sig_atomic_t g_end_turn_stop = 0;
+//volatile sig_atomic_t g_end_turn = 0;
+//volatile sig_atomic_t g_end_turn_stop = 0;
 // temporary control packet, subject to change
 struct car_drive_packet {
 	uint64_t timestamp_us;
@@ -59,7 +58,7 @@ struct car_drive_packet {
 const int CONTROL_PACKET_BYTES = 14; //8 + 3*2 = 14 bytes
 enum Commands { KEEPALIVE = 0, TURN = 1, FORWARD = 2, BACKWARD = 3, STOP = 4, TURNSTOP = 5 };
 
-const int TURN_SLEEP = 2000;
+const int TURN_SLEEP = 1500;
 const int RAMP_UP_MS = 500;
 const int INIT_STEERING_POWER = 100;
 
@@ -73,8 +72,8 @@ int turnPosition;
 void MainLoop(int socket_udp);
 void ProcessMessage(const car_drive_packet &packet);
 
-void* CompleteTurn(void* v);
-void* CompleteTurnStop(void* v);
+//void* CompleteTurn(void* v);
+//void* CompleteTurnStop(void* v);
 
 void InitMotor(motor *m);
 void StopMotors();
@@ -154,8 +153,8 @@ void MainLoop(int socket_udp) {
 
 void ProcessMessage(const car_drive_packet &packet) {	
 	if (packet.command == KEEPALIVE) return;
-	g_end_turn = 0;
-	g_end_turn_stop = 0;
+	//g_end_turn = 0;
+	//g_end_turn_stop = 0;
 	if (packet.command == TURN) {
 		//TURN
 		if (packet.param2 == 0) steer.set_position_sp(steerForward);
@@ -167,21 +166,23 @@ void ProcessMessage(const car_drive_packet &packet) {
 		else drive.set_duty_cycle_sp(-100);
 		drive.run_direct();
 		turnPosition = drive.position() + packet.param2;
-		if (packet.param2 != 0) {
+		/*if (packet.param2 != 0) {
 			g_end_turn = 1;
 			pthread_t completeThread;
 			int rc = pthread_create(&completeThread, NULL, CompleteTurn, NULL);
 			if (rc) {
 				fprintf(stderr, "ev3car-drive: return code from pThread() was %d\n", rc);
 			}
-		}
+		}*/
 
 	} else if (packet.command == FORWARD) {
 		steer.set_position_sp(steerForward);
+		steer.run_to_abs_pos();
 		drive.set_duty_cycle_sp(100);
 		drive.run_direct();
 	} else if (packet.command == BACKWARD) {
 		steer.set_position_sp(steerForward);
+		steer.run_to_abs_pos();
 		drive.set_duty_cycle_sp(-100);
 		drive.run_direct();
 	} else if (packet.command == STOP) {
@@ -191,32 +192,32 @@ void ProcessMessage(const car_drive_packet &packet) {
 		else drive.set_duty_cycle_sp(-100);
 		drive.run_direct();
 		turnPosition = drive.position() + packet.param2;
-		g_end_turn_stop = 1;
+		/*g_end_turn_stop = 1;
 		pthread_t completeThread;
 		int rc = pthread_create(&completeThread, NULL, CompleteTurnStop, NULL);
 		if (rc) {
 			fprintf(stderr, "ev3car-drive: return code from pThread() was %d\n", rc);
-		}
+		}*/
 	}
 }
 
-void* CompleteTurn(void* v) {
+/*void* CompleteTurn(void* v) {
 	while (drive.position() < turnPosition) SleepUs(TURN_SLEEP);
 	if (g_end_turn) {
 		steer.set_position_sp(steerForward);
 		steer.run_to_abs_pos();
 	}
 	return NULL;
-}
+}*/
 
-void* CompleteTurnStop(void* v) {
+/*void* CompleteTurnStop(void* v) {
 	while (drive.position() < turnPosition) SleepUs(TURN_SLEEP);
 	if (g_end_turn_stop) {
 		StopMotors();
 		//TODO:SEND RESPONSE! (TURNSTOP)
 	}
 	return NULL;
-}
+}*/
 
 void InitMotor(motor *m) {
 	if(!m->connected())
