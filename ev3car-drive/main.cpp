@@ -157,6 +157,7 @@ void ProcessMessage(const car_drive_packet &packet) {
 	//g_end_turn_stop = 0;
 	if (packet.command == TURN) {
 		//TURN
+		fprintf(stdout, "Param2:%"+PRId16+"\n",packet.param2);
 		if (packet.param2 == 0) steer.set_position_sp(steerForward);
 		else if(packet.param2 > 0) steer.set_position_sp(steerLeft);
 		else steer.set_position_sp(steerRight);
@@ -293,6 +294,6 @@ void ProcessArguments(int argc, char **argv, int *port, int *timeout_ms) {
 
 void Finish(int signal) {
 	g_finish_program=1;
-	g_end_turn = 0;
-	g_end_turn_stop = 0;
+	//g_end_turn = 0;
+	//g_end_turn_stop = 0;
 }
