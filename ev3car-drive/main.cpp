@@ -127,6 +127,8 @@ int main(int argc, char **argv) {
 	
 	//cleanup
 	StopMotors();
+	steer.set_position_sp(steerForward);
+	steer.run_to_abs_pos();
 	CloseNetworkUDP(socket_udp);
 		
 	printf("ev3car-drive: bye\n");
@@ -157,7 +159,6 @@ void ProcessMessage(const car_drive_packet &packet) {
 	//g_end_turn_stop = 0;
 	if (packet.command == TURN) {
 		//TURN
-		fprintf(stdout, "Param2:%d\n",packet.param2);
 		if (packet.param2 == 0) steer.set_position_sp(steerForward);
 		else if(packet.param2 > 0) steer.set_position_sp(steerLeft);
 		else steer.set_position_sp(steerRight);
@@ -252,10 +253,10 @@ int RecvCarDrivePacket(int socket_udp, car_drive_packet *packet) {
 }
  
 void DecodeCarDrivePacket(car_drive_packet *packet, const char *data) {
-	packet->timestamp_us=be64toh(*((uint64_t*)data));
+	packet->timestamp_us=be64toh(*((int64_t*)data));
 	packet->command=be16toh(*((int16_t*)(data+8)));
 	packet->param1=be16toh(*((int16_t*)(data+10)));
-	packet->param2=be32toh(*((int32_t*)(data+12)));	
+	packet->param2=be16toh(*((int16_t*)(data+12)));	
 }
 
 void Usage() {
