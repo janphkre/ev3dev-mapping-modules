@@ -103,6 +103,7 @@ int main(int argc, char **argv) {
 	steer.run_direct();
 	Sleep(TURN_SLEEP * 2);
 	steer.stop();
+	steer.set_position(0);
 	steerRight = steer.position();
 	steer.set_duty_cycle_sp(INIT_STEERING_POWER);
 	steer.run_direct();
@@ -110,7 +111,7 @@ int main(int argc, char **argv) {
 	steer.stop();
 	steerLeft = steer.position();
 	steerForward = (steerLeft + steerRight) / 2;
-	steer.set_speed_sp(steer.max_speed());
+	steer.set_speed_sp(600);
 	steer.set_position_sp(steerForward);
 	steer.run_to_abs_pos();
 	Sleep(TURN_SLEEP);
@@ -159,9 +160,14 @@ void ProcessMessage(const car_drive_packet &packet) {
 	//g_end_turn_stop = 0;
 	if (packet.command == TURN || packet.command == TURNSTOP) {
 		//TURN
-		if (packet.param2 == 0) steer.set_position_sp(steerForward);
-		else if(packet.param2 > 0) steer.set_position_sp(steerLeft);
-		else steer.set_position_sp(steerRight);
+		if (packet.param2 == 0) {
+
+			steer.set_position_sp(steerForward);
+		} else if (packet.param2 > 0) {
+			steer.set_position_sp(steerLeft);
+		} else {
+			steer.set_position_sp(steerRight);
+		}
 		steer.run_to_abs_pos();
 		//FORWARD / BACKWARD
 		if(packet.param1 > 0) drive.set_duty_cycle_sp(100);
