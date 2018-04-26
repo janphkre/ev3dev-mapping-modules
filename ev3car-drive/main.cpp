@@ -167,7 +167,7 @@ void ProcessMessage(const car_drive_packet &packet) {
 		if(packet.param1 > 0) drive.set_duty_cycle_sp(100);
 		else drive.set_duty_cycle_sp(-100);
 		drive.run_direct();
-		turnPosition = drive.position() + packet.param2 > 0 ? packet.param2 : -packet.param2;
+		turnPosition = drive.position() + packet.param2 < 0 && packet.param1 > 0 ? -packet.param2 : packet.param2;
 		/*if (packet.param2 != 0) {
 			g_end_turn = 1;
 			pthread_t completeThread;
