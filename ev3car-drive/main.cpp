@@ -157,7 +157,7 @@ void ProcessMessage(const car_drive_packet &packet) {
 	if (packet.command == KEEPALIVE) return;
 	//g_end_turn = 0;
 	//g_end_turn_stop = 0;
-	if (packet.command == TURN) {
+	if (packet.command == TURN || packet.command == TURNSTOP) {
 		//TURN
 		if (packet.param2 == 0) steer.set_position_sp(steerForward);
 		else if(packet.param2 > 0) steer.set_position_sp(steerLeft);
@@ -167,7 +167,7 @@ void ProcessMessage(const car_drive_packet &packet) {
 		if(packet.param1 > 0) drive.set_duty_cycle_sp(100);
 		else drive.set_duty_cycle_sp(-100);
 		drive.run_direct();
-		turnPosition = drive.position() + packet.param2;
+		turnPosition = drive.position() + packet.param2 > 0 ? packet.param2 : -packet.param2;
 		/*if (packet.param2 != 0) {
 			g_end_turn = 1;
 			pthread_t completeThread;
@@ -189,17 +189,6 @@ void ProcessMessage(const car_drive_packet &packet) {
 		drive.run_direct();
 	} else if (packet.command == STOP) {
 		StopMotors();
-	} else { //packet.command == TURNSTOP
-		if (packet.param1 > 0) drive.set_duty_cycle_sp(100);
-		else drive.set_duty_cycle_sp(-100);
-		drive.run_direct();
-		turnPosition = drive.position() + packet.param2;
-		/*g_end_turn_stop = 1;
-		pthread_t completeThread;
-		int rc = pthread_create(&completeThread, NULL, CompleteTurnStop, NULL);
-		if (rc) {
-			fprintf(stderr, "ev3car-drive: return code from pThread() was %d\n", rc);
-		}*/
 	}
 }
 
